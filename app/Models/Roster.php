@@ -11,7 +11,7 @@ class Roster extends Model
     protected $fillable = ['month', 'name'];
 
     protected $casts = [
-        'month' => 'date',
+        'month' => 'date:Y-m-d',
     ];
 
     public function assignments(): HasMany

@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Constraint;
 use App\Models\Person;
 use App\Models\Roster;
 use App\Models\ShiftType;
@@ -56,5 +57,26 @@ class DemoRosterSeeder extends Seeder
                 $shiftTypes[$code]->id => ['position' => $index],
             ]);
         }
+
+        Constraint::query()->updateOrCreate(
+            ['roster_id' => $roster->id, 'key' => 'max_total_shifts'],
+            ['value' => ['max' => 18, 'severity' => 'warn']]
+        );
+
+        Constraint::query()->updateOrCreate(
+            ['roster_id' => $roster->id, 'key' => 'availability_conflicts'],
+            ['value' => ['severity' => 'error']]
+        );
+
+        Constraint::query()->updateOrCreate(
+            ['roster_id' => $roster->id, 'key' => 'incompatible_same_day'],
+            ['value' => [
+                'severity' => 'error',
+                'pairs' => [
+                    ['NIGHT', 'CLINIC'],
+                    ['NIGHT', 'OPD'],
+                ],
+            ]]
+        );
     }
 }

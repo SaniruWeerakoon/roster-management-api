@@ -13,6 +13,6 @@ Route::name('roster.')->prefix('rosters')->group(function () {
 
     Route::get('/{roster}/totals', [RosterTotalsController::class, 'show']);
 
-    Route::post('/rosters/{roster}/validate', [RosterValidationController::class, 'validateRoster']);
+    Route::post('/{roster}/validate', [RosterValidationController::class, 'validateRoster']);
 });
 

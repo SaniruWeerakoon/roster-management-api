@@ -10,7 +10,7 @@ class Assignment extends Model
     protected $fillable = ['roster_id', 'date', 'person_id', 'shift_type_id'];
 
     protected $casts = [
-        'date' => 'date',
+        'date' => 'date:Y-m-d',
     ];
 
     public function roster(): BelongsTo
