@@ -38,6 +38,23 @@ class DemoRosterSeeder extends Seeder
         }
 
         $month = now()->startOfMonth()->toDateString(); // YYYY-MM-01
-        Roster::query()->firstOrCreate(['month' => $month], ['name' => 'Demo Roster']);
+        $roster = Roster::query()->firstOrCreate(['month' => $month], ['name' => 'Demo Roster']);
+
+        $shiftOrder = [
+            'WARD',
+            'OPD',
+            'CLINIC',
+            'NIGHT',
+        ];
+
+        $shiftTypes = ShiftType::query()->whereIn('code', $shiftOrder)
+            ->get()
+            ->keyBy('code');
+
+        foreach ($shiftOrder as $index => $code) {
+            $roster->shiftTypes()->syncWithoutDetaching([
+                $shiftTypes[$code]->id => ['position' => $index],
+            ]);
+        }
     }
 }

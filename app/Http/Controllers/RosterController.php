@@ -7,6 +7,7 @@ use App\Models\Person;
 use App\Models\Roster;
 use App\Models\ShiftType;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class RosterController extends Controller
 {
@@ -28,7 +29,8 @@ class RosterController extends Controller
     public function show(Roster $roster)
     {
         $people = Person::query()->where('active', true)->orderBy('name')->get(['id', 'code', 'name']);
-        $shiftTypes = ShiftType::query()->orderBy('id')->get(['id', 'code', 'name', 'category', 'weight', 'color']);
+//        $shiftTypes = ShiftType::query()->orderBy('id')->get(['id', 'code', 'name', 'category', 'weight', 'color']);
+        $enabledShiftTypes = $roster->shiftTypes()->get(['shift_types.id', 'shift_types.code', 'shift_types.name']);
 
         $assignments = Assignment::query()
             ->where('roster_id', $roster->id)
@@ -41,7 +43,7 @@ class RosterController extends Controller
                 'name' => $roster->name,
             ],
             'people' => $people,
-            'shiftTypes' => $shiftTypes,
+            'shiftTypes' => $enabledShiftTypes,
             'assignments' => $assignments,
         ]);
     }
@@ -55,15 +57,25 @@ class RosterController extends Controller
             'assignments.*.shift_type_id' => ['required', 'integer', 'exists:shift_types,id'],
         ]);
 
+        $allowedShiftTypeIds = $roster->shiftTypes()
+            ->pluck('shift_types.id')
+            ->flip();
+
         $rows = [];
+        $now = now();
         foreach ($data['assignments'] as $a) {
+            $shiftTypeId = (int)$a['shift_type_id'];
+            if (!isset($allowedShiftTypeIds[$shiftTypeId])) {
+                abort(422, 'Shift type not enabled for this roster');
+            }
+
             $rows[] = [
                 'roster_id' => $roster->id,
                 'date' => $a['date'],
                 'person_id' => $a['person_id'],
                 'shift_type_id' => $a['shift_type_id'],
-                'created_at' => now(),
-                'updated_at' => now(),
+                'created_at' => $now,
+                'updated_at' => $now,
             ];
         }
 
