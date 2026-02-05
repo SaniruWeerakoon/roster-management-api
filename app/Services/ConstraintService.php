@@ -24,10 +24,7 @@ class ConstraintService
             ->map(fn($c) => is_array($c->value) ? $c->value : [])
             ->all();
 
-        // Fetch assignments once (needed for multiple rules)
-        // Only for enabled shift types (extra safety)
         $enabledIds = array_values($codeToId);
-
         $assignments = Assignment::query()
             ->join('shift_types', 'shift_types.id', '=', 'assignments.shift_type_id')
             ->where('assignments.roster_id', $roster->id)
