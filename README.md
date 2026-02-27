@@ -1,59 +1,202 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Roster Scheduling API (Laravel Backend)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+This repository contains the **backend API and domain logic** for the Monthly Roster / Shift Scheduling system.
 
-## About Laravel
+The backend is responsible for:
+- Persisting roster data
+- Enforcing data integrity
+- Evaluating scheduling constraints
+- Reporting violations to the client
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+The backend **does not perform auto-scheduling** and **does not mutate data during validation**.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+---
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Overview
 
-## Learning Laravel
+The system manages **monthly rosters** where:
+- Each roster represents one calendar month
+- Assignments are explicit and manually controlled
+- Multiple people may be assigned to the same shift on the same day
+- All scheduling decisions remain under human control
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+The backend exposes **bulk-friendly, stateless APIs** designed to support optimistic UIs.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+---
 
-## Laravel Sponsors
+## Architecture
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+- **Framework:** Laravel
+- **API Style:** JSON, stateless
+- **Database:** Relational (MySQL / PostgreSQL compatible)
+- **Date Handling:** Carbon
+- **Date Storage:** DATE only (YYYY-MM-DD)
+- **Validation:** Read-only constraint evaluation
 
-### Premium Partners
+---
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+## Core Data Models
 
-## Contributing
+### Roster
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Represents a single calendar month.
 
-## Code of Conduct
+Key fields
+- id
+- month (DATE, normalized to first day of month)
+- name
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+---
 
-## Security Vulnerabilities
+### Assignment
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Represents one person assigned to one shift on one date.
 
-## License
+(roster_id, date, shift_type_id, person_id)
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Properties
+- date stored as DATE (YYYY-MM-DD)
+- Multiple people per (date, shift_type) are allowed
+- Unique constraint prevents duplicate (roster, date, shift, person) rows
+
+Not enforced (by design)
+- No maximum number of people per shift
+- No maximum number of shifts per day
+
+---
+
+### ShiftType
+
+Defines a type of shift available in a roster.
+
+Key fields
+- id
+- code (e.g. OPD, NIGHT)
+- weight (used for workload calculations)
+
+Shift types are enabled per roster via a pivot relationship.
+
+---
+
+### Person
+
+Represents an assignable individual.
+
+Key fields
+- id
+- code
+- name
+
+---
+
+## API Endpoints
+
+### Bulk Upsert Assignments
+
+POST /api/rosters/{roster}/assignments/upsert
+
+Purpose
+- Create or update multiple assignments in one request
+- Designed for optimistic UI batching
+
+Request body
+{
+  "assignments": [
+    {
+      "date": "2026-01-04",
+      "person_id": 4,
+      "shift_type_id": 2
+    }
+  ]
+}
+
+Behavior
+- Validates roster and enabled shift types
+- Uses database-level upsert
+- Idempotent for identical payloads
+
+---
+
+### Bulk Delete Assignments
+
+POST /api/rosters/{roster}/assignments/delete
+
+Purpose
+- Remove multiple assignments in one request
+- Used for batch remove / undo operations
+
+Request body
+{
+  "assignments": [
+    {
+      "date": "2026-01-04",
+      "person_id": 4,
+      "shift_type_id": 2
+    }
+  ]
+}
+
+---
+
+### Validate Roster
+
+POST /api/rosters/{roster}/validate
+
+Purpose
+- Evaluate the roster against configured constraints
+- Does not modify any data
+
+---
+
+## Validation Engine
+
+Validation is implemented via a dedicated ConstraintService.
+
+Characteristics
+- Read-only
+- Deterministic
+- Stateless
+- Safe to call repeatedly
+
+---
+
+## Implemented Validation Rules
+
+- Availability conflicts
+- Maximum total shifts per person (monthly)
+- Incompatible shift combinations on the same day
+
+---
+
+## Design Principles
+
+- Validation never mutates data
+- No automatic scheduling or correction
+- Calendar dates are not timestamps
+- Bulk APIs > chatty endpoints
+- Backend is source of truth, UI decides actions
+
+---
+
+## Environment & Setup
+
+composer install
+php artisan migrate
+php artisan serve
+
+---
+
+## Current Status
+
+- Assignment persistence
+- Bulk upsert / delete APIs
+- Constraint-based validation
+- Structured violation reporting
+
+---
+
+## Deferred Work
+
+- CSV / XLSX export endpoints
+- Hard enforcement modes
+- Historical roster snapshots
