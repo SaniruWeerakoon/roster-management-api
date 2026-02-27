@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Export\RosterExport;
 use App\Models\Assignment;
 use App\Models\Person;
 use App\Models\Roster;
@@ -114,5 +115,14 @@ class RosterController extends Controller
         $deleted = $q->delete();
 
         return response()->json(['ok' => true, 'deleted' => $deleted]);
+    }
+
+    public function export(Roster $roster)
+    {
+        $rosterData =(array) $this->show(roster: $roster)->getData(true);
+        $fileName = 'roster_' . $roster->name . '.xlsx';
+        $excel = new RosterExport();
+        $excel->roster = $rosterData;
+        return $excel->download($fileName);
     }
 }

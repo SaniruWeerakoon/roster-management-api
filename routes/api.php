@@ -10,6 +10,7 @@ Route::name('roster.')->prefix('rosters')->group(function () {
     Route::get('/{roster}', [RosterController::class, 'show']);
     Route::put('/{roster}/assignments', [RosterController::class, 'upsertAssignments']);
     Route::delete('/{roster}/assignments', [RosterController::class, 'deleteAssignments']);
+    Route::get('/{roster}/export', [RosterController::class, 'export']);
 
     Route::get('/{roster}/totals', [RosterTotalsController::class, 'show']);
 
