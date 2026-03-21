@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\PersonController;
 use App\Http\Controllers\RosterController;
 use App\Http\Controllers\RosterTotalsController;
 use App\Http\Controllers\RosterValidationController;
@@ -16,4 +17,9 @@ Route::name('roster.')->prefix('rosters')->group(function () {
 
     Route::post('/{roster}/validate', [RosterValidationController::class, 'validateRoster']);
 });
+
+Route::apiResource('admin_rosters', \App\Http\Controllers\Api\RosterController::class)->parameters([
+    'admin_rosters' => 'roster',
+]);
+Route::apiResource('people', PersonController::class);
 
