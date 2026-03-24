@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\PersonController;
+use App\Http\Controllers\AvailabilityBlockController;
 use App\Http\Controllers\RosterController;
 use App\Http\Controllers\RosterTotalsController;
 use App\Http\Controllers\RosterValidationController;
@@ -24,4 +25,5 @@ Route::apiResource('admin_rosters', \App\Http\Controllers\Api\RosterController::
 ]);
 Route::apiResource('people', PersonController::class);
 Route::apiResource('shift_types', ShiftTypeController::class);
+Route::apiResource('availability_blocks', AvailabilityBlockController::class);
 
